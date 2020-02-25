@@ -1,0 +1,5 @@
+# log files
+/logs/*
+
+# parsed data
+/analyser/data/*
