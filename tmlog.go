@@ -94,11 +94,11 @@ func (e *TMItemErr) Data() string {
 }
 
 func (e TMItemErr) Header() []string {
-	return []string{"line", "height", "name", "detail"}
+	return []string{"stamp", "line", "height", "name", "detail"}
 }
 
 func (e *TMItemErr) Format() []string {
-	return []string{strconv.Itoa(e.line), strconv.Itoa(e.height), e.name, e.info}
+	return []string{e.stamp.Format(time.RFC3339), strconv.Itoa(e.line), strconv.Itoa(e.height), e.name, e.info}
 }
 
 func (e *TMItemErr) Stamp() time.Time {

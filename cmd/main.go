@@ -19,16 +19,17 @@ var (
 	input  = flag.String("i", defaultInput, "the path of the input log file")
 	output = flag.String("o", defaultOutput, "the path of the output folder")
 
-	filterDate = flag.String("by_date", "", "the date of selected log items")
-	// filterTime = flag.String("by_time", "", "the time of selected log items")
+	filterDate = flag.String("date", "", "the date of selected log items")
 )
 
 func main() {
 	// gen filter using parameter
+	flag.Parse()
+
 	if len(*filterDate) > 0 {
 		date, err := time.Parse("2006-01-02", *filterDate)
 		if err != nil {
-			fmt.Printf("by_date: error parsing date: %s", err.Error())
+			fmt.Printf("by-date: error parsing date: %s", err.Error())
 			os.Exit(1)
 		}
 
@@ -36,6 +37,7 @@ func main() {
 			iDate := i.Stamp()
 			return (date.Day() == iDate.Day()) && (date.Month() == iDate.Month()) && (date.Year() == iDate.Year())
 		})
+		fmt.Printf("%s as log item data filter added\n", *filterDate)
 	}
 
 	// TODO: add time filter

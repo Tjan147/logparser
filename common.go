@@ -117,6 +117,10 @@ func RegisterItemFilter(filter FilterFunc) {
 	itemFilters = append(itemFilters, filter)
 }
 
+func GetItemFiltersCount() int {
+	return len(itemFilters)
+}
+
 // -------------- log parsing ---------------- //
 
 type ParseResult = map[string][]Item
@@ -184,6 +188,7 @@ func SaveAsCSV(path string, content []Item) error {
 			if err := os.Remove(path); err != nil {
 				return err
 			}
+			fmt.Printf("existing %s file deleted\n", info.Name())
 		}
 	}
 
