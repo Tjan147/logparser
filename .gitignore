@@ -3,3 +3,6 @@
 
 # parsed data
 /analyser/data/*
+
+# bin file
+/cmd/cmd

@@ -12,7 +12,7 @@ import (
 
 const (
 	defaultInput  = "../logs/cv2.log"
-	defaultOutput = "../data"
+	defaultOutput = "../analyser/data"
 )
 
 var (

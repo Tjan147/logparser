@@ -79,27 +79,26 @@ type TMItemErr struct {
 	info   string
 }
 
-func NewTMItemErr(t time.Time, l, h int, n, m, i string) Item {
+func NewTMItemErr(t time.Time, l, h int, n, i string) Item {
 	return &TMItemErr{
 		line:   l,
 		stamp:  t,
 		height: h,
 		name:   n,
-		module: m,
 		info:   i,
 	}
 }
 
 func (e *TMItemErr) Data() string {
-	return fmt.Sprintf("E[%s] %-32s module=%s err=\"%s\"", e.stamp.Format(TMStampFmt), e.name, e.module, e.info)
+	return fmt.Sprintf("E[%s] %-32s module=%s %s", e.stamp.Format(TMStampFmt), e.name, e.info)
 }
 
 func (e TMItemErr) Header() []string {
-	return []string{"line", "height", "head", "module", "detail"}
+	return []string{"line", "height", "name", "detail"}
 }
 
 func (e *TMItemErr) Format() []string {
-	return []string{strconv.Itoa(e.line), strconv.Itoa(e.height), e.name, e.module, e.info}
+	return []string{strconv.Itoa(e.line), strconv.Itoa(e.height), e.name, e.info}
 }
 
 func (e *TMItemErr) Stamp() time.Time {
@@ -120,16 +119,7 @@ func ParseTMErr(lineNum int, lineText string) (Item, error) {
 		return nil, fmt.Errorf("[%d] error split err log: %s", lineNum, err.Error())
 	}
 
-	// parse tail
-	tailParts := strings.Split(tail, "err=")
-	if len(tailParts) < 2 {
-		return nil, fmt.Errorf("[%d] malformed err log tail: %s", lineNum, tail)
-	}
-
-	module := strings.TrimSpace(tailParts[0])
-	detail := strings.TrimSuffix(strings.TrimPrefix(tailParts[1], "\""), "\"")
-
-	return NewTMItemErr(stamp, lineNum, currentHeight, name, module, detail), nil
+	return NewTMItemErr(stamp, lineNum, currentHeight, name, tail), nil
 }
 
 // ------------- info item ---------------- //
