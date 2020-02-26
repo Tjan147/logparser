@@ -18,16 +18,16 @@ const (
 )
 
 var (
-	currentHeight = 0
-	currentStamp  = time.Time{}
+	currentHeight      = 0
+	currentHeightStamp = time.Time{}
 )
 
 func SetCurrentHeight(h int) {
 	currentHeight = h
 }
 
-func SetCurrentStamp(s time.Time) {
-	currentStamp = s
+func SetCurrentHeightStamp(s time.Time) {
+	currentHeightStamp = s
 }
 
 // ------------- register -------------- //
@@ -144,17 +144,52 @@ type TMInfoApply struct {
 	validTxNum   int
 	invalidTxNum int
 	stamp        time.Time
-	cost         time.Duration
 }
 
-func NewTmInfoApply(h, vtxn, itxn int, s time.Time, c time.Duration) Item {
+func NewTmInfoApply(h, vtxn, itxn int, s time.Time) Item {
 	return &TMInfoApply{
 		height:       h,
 		validTxNum:   vtxn,
 		invalidTxNum: itxn,
 		stamp:        s,
-		cost:         c,
 	}
+}
+
+// form like `NAME=INT_VALUE`
+func fetchIntFromPair(pair string) (int, error) {
+	parts := strings.Split(pair, "=")
+	if len(parts) != 2 {
+		return -1, fmt.Errorf("malformed pair: %s", pair)
+	}
+	n, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return -1, fmt.Errorf("error parse int: %s", err.Error())
+	}
+	return n, nil
+}
+
+func parseTailApply(stamp time.Time, tail string) (Item, error) {
+	parts := strings.Split(tail, " ")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("malformed apply tail: %s", tail)
+	}
+
+	h, err := fetchIntFromPair(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("error parse apply height: %s", err.Error())
+	}
+
+	vtxs, err := fetchIntFromPair(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("error parse apply validTxs: %s", err.Error())
+	}
+
+	itxs, err := fetchIntFromPair(parts[3])
+	if err != nil {
+		return nil, fmt.Errorf("error parse apply invalidTxs: %s", err.Error())
+	}
+
+	return NewTmInfoApply(h, vtxs, itxs, stamp), nil
 }
 
 func (i *TMInfoApply) Data() string {
@@ -162,12 +197,11 @@ func (i *TMInfoApply) Data() string {
 }
 
 func (i TMInfoApply) Header() []string {
-	return []string{"height", "stamp", "cost"}
+	return []string{"height", "stamp"}
 }
 
 func (i *TMInfoApply) Format() []string {
-	asMS := strconv.FormatInt(i.cost.Milliseconds(), 10)
-	return []string{strconv.Itoa(i.height), i.stamp.Format(time.RFC3339), asMS}
+	return []string{strconv.Itoa(i.height), i.stamp.Format(time.RFC3339)}
 }
 
 func (i *TMInfoApply) Stamp() time.Time {
@@ -201,6 +235,34 @@ func NewTMInfoCommit(h, tn int, hash string, s time.Time) Item {
 		appHash: hash,
 		stamp:   s,
 	}
+}
+
+func parseTailCommit(stamp time.Time, tail string) (Item, error) {
+	parts := strings.Split(tail, " ")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("malformed commit tail: %s", tail)
+	}
+
+	h, err := fetchIntFromPair(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("error parse commit height: %s", err.Error())
+	}
+
+	txs, err := fetchIntFromPair(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("error parse commit txs: %s", err.Error())
+	}
+
+	hashParts := strings.Split(parts[3], "=")
+	if len(hashParts) != 2 {
+		return nil, fmt.Errorf("malformed commit appHash: %s", parts[3])
+	}
+
+	// update current height info
+	SetCurrentHeight(h)
+	SetCurrentHeightStamp(stamp)
+
+	return NewTMInfoCommit(h, txs, hashParts[1], stamp), nil
 }
 
 func (i *TMInfoCommit) Data() string {
@@ -246,6 +308,42 @@ func NewTMInfoEndBlocker(s time.Time, h int, m string, c time.Duration) Item {
 		module: m,
 		cost:   c,
 	}
+}
+
+func fetchDurationFromPair(pair string) (time.Duration, error) {
+	parts := strings.Split(pair, "=")
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("malformed pair: %s", pair)
+	}
+	dur, err := time.ParseDuration(parts[1])
+	if err != nil {
+		return 0, fmt.Errorf("error parse duration: %s", err.Error())
+	}
+	return dur, nil
+}
+
+func parseTailEndBlocker(stamp time.Time, tail string) (Item, error) {
+	parts := strings.Split(tail, " ")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("malformed endblocker tail: %s", tail)
+	}
+
+	h, err := fetchIntFromPair(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("error parse endblocker height: %s", err.Error())
+	}
+
+	nameParts := strings.Split(parts[2], "=")
+	if len(nameParts) != 2 {
+		return nil, fmt.Errorf("malformed endblocker name: %s", parts[2])
+	}
+
+	c, err := fetchDurationFromPair(parts[3])
+	if err != nil {
+		return nil, fmt.Errorf("error parse endblocker cost: %s", err.Error())
+	}
+
+	return NewTMInfoEndBlocker(stamp, h, nameParts[1], c), nil
 }
 
 func (i *TMInfoEndBlocker) Data() string {
@@ -295,6 +393,30 @@ func NewTMInfoHandler(s time.Time, h int, t string, c time.Duration) Item {
 	}
 }
 
+func parseTailHandler(stamp time.Time, tail string) (Item, error) {
+	parts := strings.Split(tail, " ")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("malformed handler tail: %s", tail)
+	}
+
+	h, err := fetchIntFromPair(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("error parse handler height: %s", err.Error())
+	}
+
+	typeParts := strings.Split(parts[2], "=")
+	if len(typeParts) != 2 {
+		return nil, fmt.Errorf("malformed handler type: %s", parts[2])
+	}
+
+	c, err := fetchDurationFromPair(parts[3])
+	if err != nil {
+		return nil, fmt.Errorf("error parse handler cost: %s", err.Error())
+	}
+
+	return NewTMInfoHandler(stamp, h, typeParts[1], c), nil
+}
+
 func (i *TMInfoHandler) Data() string {
 	asMS := strconv.FormatInt(i.cost.Milliseconds(), 10)
 	return fmt.Sprintf("I[%s] %-32s module=main height=%d name=%s cost=%s", i.stamp.Format(TMStampFmt), itemNameHandler, i.height, i.txType, asMS)
@@ -342,6 +464,26 @@ func NewTMInfoQuerier(s time.Time, h int, p string, c time.Duration) Item {
 	}
 }
 
+func parseTailQuerier(stamp time.Time, tail string) (Item, error) {
+	parts := strings.Split(tail, " ")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("malformed querier tail: %s", tail)
+	}
+
+	pathParts := strings.Split(parts[1], "=")
+	if len(pathParts) != 2 {
+		return nil, fmt.Errorf("malformed querier path: %s", parts[1])
+	}
+	path := strings.TrimRight(strings.TrimLeft(pathParts[1], "["), "]")
+
+	c, err := fetchDurationFromPair(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("error parse querier time: %s", err.Error())
+	}
+
+	return NewTMInfoQuerier(stamp, currentHeight, path, c), nil
+}
+
 func (i *TMInfoQuerier) Data() string {
 	asMS := strconv.FormatInt(i.cost.Milliseconds(), 10)
 	return fmt.Sprintf("I[%s] %-32s module=main path=[%s] cost=%s", i.stamp.Format(TMStampFmt), itemNameQuerier, i.path, asMS)
@@ -368,21 +510,91 @@ func (i TMInfoQuerier) Level() ItemLevel {
 	return LevelInfo
 }
 
+// UnknownItem
+var _ Item = (*TMInfoIgnore)(nil)
+
+type TMInfoIgnore struct {
+	stamp  time.Time
+	height int
+	head   string
+	tail   string
+}
+
+func NewTMInfoIgnore(s time.Time, h int, head, tail string) Item {
+	return &TMInfoIgnore{
+		stamp:  s,
+		height: h,
+		head:   head,
+		tail:   tail,
+	}
+}
+
+func (i *TMInfoIgnore) Data() string {
+	return fmt.Sprintf("I[%s] %-32s module=%s", i.stamp.Format(TMStampFmt), i.head, i.tail)
+}
+
+func (i TMInfoIgnore) Header() []string {
+	return []string{"height", "head", "tail"}
+}
+
+func (i *TMInfoIgnore) Format() []string {
+	return []string{strconv.Itoa(i.height), i.head, i.tail}
+}
+
+func (i *TMInfoIgnore) Stamp() time.Time {
+	return i.stamp
+}
+
+func (i TMInfoIgnore) Class() string {
+	return "tmIgnore"
+}
+
+func (i TMInfoIgnore) Level() ItemLevel {
+	return LevelInfo
+}
+
 // ------------------------- //
+
+type parseTailFunc = func(time.Time, string) (Item, error)
 
 func ParseTMInfo(lineNum int, lineText string) (Item, error) {
 	parts := strings.Split(lineText, TMItemSep)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("%d: malformed tm item: %s", lineNum, lineText)
+	}
 
 	// parse head
 	headParts := strings.Split(parts[0], "]")
 
 	stamp, err := parseTMStamp(headParts[0])
 	if err != nil {
-		return nil, fmt.Errorf("%d: %s", lineNum, err.Error())
+		return nil, fmt.Errorf("%d: error parse stamp: %s", lineNum, err.Error())
 	}
+
+	var tailParser parseTailFunc
 	name := strings.TrimSpace(headParts[1])
-
 	switch name {
-
+	case itemNameApply:
+		tailParser = parseTailApply
+	case itemNameCommit:
+		tailParser = parseTailCommit
+	case itemNameEndBlocker:
+		tailParser = parseTailEndBlocker
+	case itemNameHandler:
+		tailParser = parseTailHandler
+	case itemNameQuerier:
+		tailParser = parseTailQuerier
+	default:
 	}
+
+	var ret Item
+	if tailParser != nil {
+		if ret, err = tailParser(stamp, parts[1]); err != nil {
+			return nil, fmt.Errorf("%d: error parse tail: %s", lineNum, err.Error())
+		}
+	} else {
+		ret = NewTMInfoIgnore(stamp, currentHeight, name, parts[1])
+	}
+
+	return ret, nil
 }
