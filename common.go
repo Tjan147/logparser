@@ -155,7 +155,7 @@ func ParseByLine(path string) (ParseResult, int, error) {
 
 		pass := true
 		for _, f := range itemFilters {
-			if f(logItem) {
+			if !f(logItem) {
 				pass = false
 				break
 			}
