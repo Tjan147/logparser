@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/tjan147/logparser"
@@ -37,6 +38,8 @@ func main() {
 			iDate := i.Stamp()
 			return (date.Day() == iDate.Day()) && (date.Month() == iDate.Month()) && (date.Year() == iDate.Year())
 		})
+		logparser.SetCurrentHeightStamp(date)
+
 		fmt.Printf("%s as log item data filter added\n", *filterDate)
 	}
 
@@ -54,7 +57,7 @@ func main() {
 
 	fmt.Println("start exporting parsed data ...")
 	for name, data := range res {
-		outFile := path.Join(*output, name+".csv")
+		outFile := path.Join(*output, filepath.Base(*input)+"."+name+".csv")
 
 		if err := logparser.SaveAsCSV(outFile, data); err != nil {
 			fmt.Printf("error exporting data to %s: %s\n", outFile, err.Error())

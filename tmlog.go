@@ -216,14 +216,16 @@ type TMInfoCommit struct {
 	txNum   int
 	appHash string
 	stamp   time.Time
+	cost    time.Duration
 }
 
-func NewTMInfoCommit(h, tn int, hash string, s time.Time) Item {
+func NewTMInfoCommit(h, tn int, hash string, s time.Time, c time.Duration) Item {
 	return &TMInfoCommit{
 		height:  h,
 		txNum:   tn,
 		appHash: hash,
 		stamp:   s,
+		cost:    c,
 	}
 }
 
@@ -248,11 +250,12 @@ func parseTailCommit(stamp time.Time, tail string) (Item, error) {
 		return nil, fmt.Errorf("malformed commit appHash: %s", parts[3])
 	}
 
+	c := stamp.Sub(currentHeightStamp)
 	// update current height info
 	SetCurrentHeight(h)
 	SetCurrentHeightStamp(stamp)
 
-	return NewTMInfoCommit(h, txs, hashParts[1], stamp), nil
+	return NewTMInfoCommit(h, txs, hashParts[1], stamp, c), nil
 }
 
 func (i *TMInfoCommit) Data() string {
@@ -260,11 +263,12 @@ func (i *TMInfoCommit) Data() string {
 }
 
 func (i TMInfoCommit) Header() []string {
-	return []string{"height", "stamp", "txs", "hash"}
+	return []string{"height", "stamp", "txs", "hash", "cost"}
 }
 
 func (i *TMInfoCommit) Format() []string {
-	return []string{strconv.Itoa(i.height), i.stamp.Format(time.RFC3339), strconv.Itoa(i.txNum), i.appHash}
+	asMS := strconv.FormatInt(i.cost.Milliseconds(), 10)
+	return []string{strconv.Itoa(i.height), i.stamp.Format(time.RFC3339), strconv.Itoa(i.txNum), i.appHash, asMS}
 }
 
 func (i *TMInfoCommit) Stamp() time.Time {
