@@ -4,6 +4,8 @@
 # parsed data
 /analyser/data/*
 /analyser/.ipynb_checkpoints/*
+/analyser/target.txt
+/analyser/*.png
 
 # bin file
 /cmd/cmd

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 )
 
 const (
+	targetNameFile = "../analyser/target.txt"
+
 	defaultInput  = "../logs/cv2.log"
 	defaultOutput = "../analyser/data"
 )
@@ -22,6 +25,20 @@ var (
 
 	filterDate = flag.String("date", "", "the date of selected log items")
 )
+
+func recordTargetName(target string) {
+	if info, err := os.Stat(targetNameFile); !os.IsNotExist(err) {
+		if !info.IsDir() {
+			if err := os.Remove(targetNameFile); err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	if err := ioutil.WriteFile(targetNameFile, []byte(target), 0644); err != nil {
+		panic(err)
+	}
+}
 
 func main() {
 	// gen filter using parameter
@@ -43,8 +60,6 @@ func main() {
 		fmt.Printf("%s as log item data filter added\n", *filterDate)
 	}
 
-	// TODO: add time filter
-
 	// parse as tendermint-like log
 	logparser.RegisterTMPrefix()
 
@@ -55,9 +70,16 @@ func main() {
 	}
 	fmt.Printf("%d lines successfully parsed\n", cnt)
 
+	datePart := ""
+	if len(*filterDate) > 0 {
+		datePart = "." + *filterDate
+	}
+	outName := filepath.Base(*input) + datePart
+	recordTargetName(outName)
+
 	fmt.Println("start exporting parsed data ...")
 	for name, data := range res {
-		outFile := path.Join(*output, filepath.Base(*input)+"."+name+".csv")
+		outFile := path.Join(*output, outName+"."+name+".csv")
 
 		if err := logparser.SaveAsCSV(outFile, data); err != nil {
 			fmt.Printf("error exporting data to %s: %s\n", outFile, err.Error())

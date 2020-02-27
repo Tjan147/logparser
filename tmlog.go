@@ -263,7 +263,7 @@ func (i *TMInfoCommit) Data() string {
 }
 
 func (i TMInfoCommit) Header() []string {
-	return []string{"height", "stamp", "txs", "hash", "cost"}
+	return []string{"height", "stamp", "txs", "hash", "block_cost"}
 }
 
 func (i *TMInfoCommit) Format() []string {
@@ -346,7 +346,7 @@ func (i *TMInfoEndBlocker) Data() string {
 }
 
 func (i TMInfoEndBlocker) Header() []string {
-	return []string{"height", "module", "cost"}
+	return []string{"height", "module", "endblocker_cost"}
 }
 
 func (i *TMInfoEndBlocker) Format() []string {
@@ -417,7 +417,7 @@ func (i *TMInfoHandler) Data() string {
 }
 
 func (i TMInfoHandler) Header() []string {
-	return []string{"height", "type", "cost"}
+	return []string{"height", "type", "handler_cost"}
 }
 
 func (i *TMInfoHandler) Format() []string {
@@ -484,7 +484,7 @@ func (i *TMInfoQuerier) Data() string {
 }
 
 func (i TMInfoQuerier) Header() []string {
-	return []string{"height", "path", "cost"}
+	return []string{"height", "path", "querier_cost"}
 }
 
 func (i *TMInfoQuerier) Format() []string {
