@@ -62,6 +62,8 @@ func main() {
 
 	// parse as tendermint-like log
 	logparser.RegisterTMPrefix()
+	// parse the self-made benchmark log
+	logparser.RegisterBSPrefix()
 
 	fmt.Printf("start parsing %s ...\n", *input)
 	res, cnt, err := logparser.ParseByLine(*input)
